@@ -367,8 +367,8 @@ export const deleteBucket = (bucket) => {
 
 export const listObjects = () => {
   return (dispatch, getState) => {
-    const {currentBucket, currentPath, marker, objects, istruncated, web} = getState()
-    if (!istruncated) return
+    const {buckets, currentBucket, currentPath, marker, objects, istruncated, web} = getState()
+    if (!istruncated || buckets.length === 0) return
     web.ListObjects({
       bucketName: currentBucket,
       prefix: currentPath,
