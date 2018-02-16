@@ -768,6 +768,7 @@ type ListAllBucketPoliciesArgs struct {
 
 // BucketAccessPolicy - Collection of canned bucket policy at a given prefix.
 type BucketAccessPolicy struct {
+	Bucket string              `json:"bucket"`
 	Prefix string              `json:"prefix"`
 	Policy policy.BucketPolicy `json:"policy"`
 }
@@ -798,8 +799,18 @@ func (web *webAPIHandlers) ListAllBucketPolicies(r *http.Request, args *ListAllB
 	}
 	reply.UIVersion = browser.UIVersion
 	for prefix, policy := range policy.GetPolicies(policyInfo.Statements, args.BucketName) {
+		// Split prefix using slash separator into a given number of
+		// expected tokens.
+		tokens := strings.SplitN(prefix, slashSeparator, 2)
+		bucketName := tokens[0]
+		objectPrefix := ""
+		if len(tokens) == 2 {
+			objectPrefix = strings.TrimSuffix(tokens[1], "*")
+		}
+
 		reply.Policies = append(reply.Policies, BucketAccessPolicy{
-			Prefix: prefix,
+			Bucket: bucketName,
+			Prefix: objectPrefix,
 			Policy: policy,
 		})
 	}
@@ -870,6 +881,18 @@ func (web *webAPIHandlers) SetBucketPolicy(r *http.Request, args *SetBucketPolic
 	data, err := json.Marshal(policyInfo)
 	if err != nil {
 		return toJSONError(err)
+	}
+
+	// Parse check bucket policy.                                                                                     
+	if s3Error := checkBucketPolicyResources(args.BucketName, policyInfo); s3Error != ErrNone {
+		apiErr := getAPIError(s3Error)
+		var err error
+		if apiErr.Code == "XMinioPolicyNesting" {
+			err = PolicyNesting{}
+		} else {
+			err = fmt.Errorf(apiErr.Description)
+		}
+		return toJSONError(err, args.BucketName)
 	}
 
 	// Parse validate and save bucket policy.

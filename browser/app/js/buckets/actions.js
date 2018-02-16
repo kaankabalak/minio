@@ -21,9 +21,12 @@ import * as objectsActions from "../objects/actions"
 
 export const SET_LIST = "buckets/SET_LIST"
 export const ADD = "buckets/ADD"
+export const REMOVE = "buckets/REMOVE"
 export const SET_FILTER = "buckets/SET_FILTER"
 export const SET_CURRENT_BUCKET = "buckets/SET_CURRENT_BUCKET"
 export const SHOW_MAKE_BUCKET_MODAL = "buckets/SHOW_MAKE_BUCKET_MODAL"
+export const SHOW_BUCKET_POLICY = "buckets/SHOW_BUCKET_POLICY"
+export const SET_POLICIES = "buckets/SET_POLICIES"
 
 export const fetchBuckets = () => {
   return function(dispatch) {
@@ -87,8 +90,48 @@ export const makeBucket = bucket => {
   }
 }
 
+export const deleteBucket = bucket => {
+  return function(dispatch) {
+    return web
+      .DeleteBucket({
+        bucketName: bucket
+      })
+      .then(() => {
+        dispatch(
+          alertActions.set({
+            type: "info",
+            message: "Bucket '" + bucket + "' has been deleted."
+          })
+        )
+        dispatch(removeBucket(bucket))
+        web.ListBuckets().then(res => {
+          const buckets = res.buckets ? res.buckets.map(bucket => bucket.name) : []
+          dispatch(setList(buckets))
+          if (buckets.length > 0) {
+            dispatch(selectBucket(buckets[0]))
+          } else {
+            dispatch(selectBucket(""))
+          }
+        })
+      })
+      .catch(err => { 
+        dispatch(
+          alertActions.set({
+            type: "danger",
+            message: err.message
+          })
+        )
+      })
+  }
+}
+
 export const addBucket = bucket => ({
   type: ADD,
+  bucket
+})
+
+export const removeBucket = bucket => ({
+  type: REMOVE,
   bucket
 })
 
@@ -99,5 +142,20 @@ export const showMakeBucketModal = () => ({
 
 export const hideMakeBucketModal = () => ({
   type: SHOW_MAKE_BUCKET_MODAL,
+  show: false
+})
+
+export const setPolicies = policies => ({
+  type: SET_POLICIES,
+  policies
+})
+
+export const showBucketPolicy = () => ({
+  type: SHOW_BUCKET_POLICY,
+  show: true
+})
+
+export const hideBucketPolicy = () => ({
+  type: SHOW_BUCKET_POLICY,
   show: false
 })
