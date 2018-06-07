@@ -58,7 +58,11 @@ export const ObjectItem = ({
           href="#"
           onClick={e => {
             e.preventDefault()
-            checked ? uncheckObject(name) : checkObject(name)
+            if (contentType === "") {
+              onClick()
+            } else {
+              checked ? uncheckObject(name) : checkObject(name)
+            }
           }}
         >
           {name}
