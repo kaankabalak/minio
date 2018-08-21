@@ -245,12 +245,12 @@ export const downloadObject = object => {
       return web
         .CreateURLToken()
         .then(res => {
-          const url = `${
+          const requestUrl = `${
             window.location.origin
           }${minioBrowserPrefix}/download/${currentBucket}/${encObjectName}?token=${
             res.token
           }`
-          window.location = url
+          downloadSingleObject(requestUrl, dispatch)
         })
         .catch(err => {
           dispatch(
@@ -261,10 +261,10 @@ export const downloadObject = object => {
           )
         })
     } else {
-      const url = `${
+      const requestUrl = `${
         window.location.origin
       }${minioBrowserPrefix}/download/${currentBucket}/${encObjectName}?token=''`
-      window.location = url
+      downloadSingleObject(requestUrl, dispatch)
     }
   }
 }
@@ -315,6 +315,25 @@ export const downloadCheckedObjects = () => {
   }
 }
 
+const downloadSingleObject = (url, dispatch) => {
+  var xhr = new XMLHttpRequest()
+  xhr.open("GET", url, true)
+  xhr.onload = function() {
+    console.log(xhr)
+    if (this.status / 100 === 2) {
+      window.location = url
+    } else {
+      dispatch(
+        alertActions.set({
+          type: "danger",
+          message: this.response
+        })
+      )
+    }
+  }
+  xhr.send()
+}
+
 const downloadZip = (url, req, dispatch) => {
   var anchor = document.createElement("a")
   document.body.appendChild(anchor)
@@ -324,7 +343,7 @@ const downloadZip = (url, req, dispatch) => {
   xhr.responseType = "blob"
 
   xhr.onload = function(e) {
-    if (this.status == 200) {
+    if (this.status / 100 === 2) {
       dispatch(resetCheckedList())
       var blob = new Blob([this.response], {
         type: "octet/stream"
@@ -339,6 +358,18 @@ const downloadZip = (url, req, dispatch) => {
       anchor.click()
       window.URL.revokeObjectURL(blobUrl)
       anchor.remove()
+    } else {
+      // as the response type is blob, we need to read it to return the error message
+      var fileReader = new FileReader()
+      fileReader.onload = function() {
+        dispatch(
+          alertActions.set({
+            type: "danger",
+            message: fileReader.result
+          })
+        )
+      }
+      fileReader.readAsText(this.response)
     }
   }
   xhr.send(JSON.stringify(req))

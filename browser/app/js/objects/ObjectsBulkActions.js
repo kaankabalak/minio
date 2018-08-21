@@ -106,7 +106,6 @@ const mapDispatchToProps = dispatch => {
   return {
     downloadObject: object => dispatch(actions.downloadObject(object)),
     downloadChecked: () => dispatch(actions.downloadCheckedObjects()),
-    downloadObject: object => dispatch(actions.downloadObject(object)),
     resetCheckedList: () => dispatch(actions.resetCheckedList()),
     clearChecked: () => dispatch(actions.resetCheckedList()),
     deleteChecked: () => dispatch(actions.deleteCheckedObjects())
