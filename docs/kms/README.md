@@ -1,5 +1,5 @@
 # KMS Quickstart Guide [![Slack](https://slack.minio.io/slack?type=svg)](https://slack.minio.io)
-
+Test
 KMS feature allows you to use Vault to generate and manages keys which are used by the minio server to encrypt objects.This document explains how to configure Minio with Vault as KMS.
 
 ## Get started
