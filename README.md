@@ -23,7 +23,7 @@ Please visit Minio Docker quickstart guide for more [here](https://docs.minio.io
 ### Homebrew
 Install minio packages using [Homebrew](http://brew.sh/)
 ```sh
-brew install minio/stable/minio
+brew install minio/stafsdadasble/minio
 minio server /data
 ```
 
