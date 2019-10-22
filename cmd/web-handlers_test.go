@@ -23,6 +23,7 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -36,6 +37,7 @@ import (
 	jwtgo "github.com/dgrijalva/jwt-go"
 	humanize "github.com/dustin/go-humanize"
 	miniogopolicy "github.com/minio/minio-go/v6/pkg/policy"
+	"github.com/minio/minio/pkg/auth"
 	"github.com/minio/minio/pkg/hash"
 	"github.com/minio/minio/pkg/policy"
 	"github.com/minio/minio/pkg/policy/condition"
@@ -54,6 +56,169 @@ func (f *flushWriter) WriteHeader(code int)              {}
 
 func newFlushWriter(writer io.Writer) http.ResponseWriter {
 	return &flushWriter{writer}
+}
+
+// Tests toWebAPIError function.
+func TestToWebAPIError(t *testing.T) {
+	// Return already existing error types
+	testCases := []struct {
+		err    error
+		apiErr APIError
+	}{
+		{
+			err: errServerNotInitialized,
+			apiErr: APIError{
+				Code:           "XMinioServerNotInitialized",
+				HTTPStatusCode: http.StatusServiceUnavailable,
+				Description:    errServerNotInitialized.Error(),
+			},
+		},
+		{
+			err:    errAuthentication,
+			apiErr: APIError{
+				Code:           "AccessDenied",
+				HTTPStatusCode: http.StatusForbidden,
+				Description:    errAuthentication.Error(),
+			},
+		},
+		{
+			err:    auth.ErrInvalidAccessKeyLength,
+			apiErr: APIError{
+				Code:           "AccessDenied",
+				HTTPStatusCode: http.StatusForbidden,
+				Description:    auth.ErrInvalidAccessKeyLength.Error(),
+			},
+		},
+		{
+			err:    auth.ErrInvalidSecretKeyLength,
+			apiErr: APIError{
+				Code:           "AccessDenied",
+				HTTPStatusCode: http.StatusForbidden,
+				Description:    auth.ErrInvalidSecretKeyLength.Error(),
+			},
+		},
+		{
+			err:    errInvalidAccessKeyID,
+			apiErr: APIError{
+				Code:           "AccessDenied",
+				HTTPStatusCode: http.StatusForbidden,
+				Description:    errInvalidAccessKeyID.Error(),
+			},
+		},
+		{
+			err:    errSizeUnspecified,
+			apiErr: APIError{
+				Code:           "InvalidRequest",
+				HTTPStatusCode: http.StatusBadRequest,
+				Description:    err.Error(),
+			},
+		},
+		{
+			err:    errChangeCredNotAllowed,
+			apiErr: APIError{
+				Code:           "MethodNotAllowed",
+				HTTPStatusCode: http.StatusMethodNotAllowed,
+				Description:    errChangeCredNotAllowed.Error(),
+			},
+		},
+		{
+			err:    errInvalidBucketName,
+			apiErr: APIError{
+				Code:           "InvalidBucketName",
+				HTTPStatusCode: http.StatusBadRequest,
+				Description:    errInvalidBucketName.Error(),
+			},
+		},
+		{
+			err:    errInvalidArgument,
+			apiErr: APIError{
+				Code:           "InvalidArgument",
+				HTTPStatusCode: http.StatusBadRequest,
+				Description:    errInvalidArgument.Error(),
+			},
+		},
+		{
+			err:    errEncryptedObject,
+			apiErr: getAPIError(ErrSSEEncryptedObject),
+		},
+		{
+			err:    errInvalidEncryptionParameters,
+			apiErr: getAPIError(ErrInvalidEncryptionParameters),
+		},
+		{
+			err:    errObjectTampered,
+			apiErr: getAPIError(ErrObjectTampered),
+		},
+		{
+			err:    errMethodNotAllowed,
+			apiErr: getAPIError(ErrMethodNotAllowed),
+		},
+		{
+			err:    StorageFull{},
+			apiErr: getAPIError(ErrStorageFull),
+		},
+		{
+			err:    BucketNotFound{},
+			apiErr: getAPIError(ErrNoSuchBucket),
+		},
+		{
+			err:    BucketNotEmpty{},
+			apiErr: getAPIError(ErrBucketNotEmpty),
+		},
+		{
+			err:    BucketExists{},
+			apiErr: getAPIError(ErrBucketAlreadyOwnedByYou),
+		},
+		{
+			err:    BucketNameInvalid{},
+			apiErr: getAPIError(ErrInvalidBucketName),
+		},
+		{
+			err:    hash.BadDigest{},
+			apiErr: getAPIError(ErrBadDigest),
+		},
+		{
+			err:    IncompleteBody{},
+			apiErr: getAPIError(ErrIncompleteBody),
+		},
+		{
+			err:    ObjectExistsAsDirectory{},
+			apiErr: getAPIError(ErrObjectExistsAsDirectory),
+		},
+		{
+			err:    ObjectNotFound{},
+			apiErr: getAPIError(ErrNoSuchKey),
+		},
+		{
+			err:    ObjectNameInvalid{},
+			apiErr: getAPIError(ErrNoSuchKey),
+		},
+		{
+			err:    InsufficientWriteQuorum{},
+			apiErr: getAPIError(ErrWriteQuorum),
+		},
+		{
+			err:    InsufficientReadQuorum{},
+			apiErr: getAPIError(ErrReadQuorum),
+		},
+		{
+			err:    NotImplemented{},
+			apiErr: getAPIError(ErrNotImplemented),
+		},
+		{
+			err:    errors.New("Custom error"),
+			apiErr: getAPIError(ErrInternalError),
+		},
+	}
+
+	// Validate all the test cases.
+	ctx := context.Background()
+	for i, testCase := range testCases {
+		apiErr := toWebAPIError(ctx, testCase.err)
+		if apiErr != testCase.apiErr {
+			t.Errorf("Test %v: Expected error %+v, got %+v", i+1, testCase.apiErr, apiErr)
+		}
+	}
 }
 
 // Tests private function writeWebErrorResponse.
